@@ -1,0 +1,13 @@
+node_modules/
+dist/
+functions/lib/
+.env.local
+.env.*.local
+.demo-*.json*
+.firebase/
+*-debug.log
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
