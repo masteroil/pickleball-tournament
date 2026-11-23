@@ -146,6 +146,27 @@ function App() {
   const tournamentMatches = s.events
     .flatMap((event) => event.matches.map((match) => ({ event, match })))
     .sort((a, b) => a.match.slot - b.match.slot);
+  const courtNumber = /^\d+$/.test(mid) ? Number(mid) : -1;
+  const validCourt =
+    t?.id === tid && courtNumber >= 0 && courtNumber < t.courts.length;
+  const assigned =
+    page === "court" && validCourt && staff
+      ? tournamentMatches.filter(
+          ({ match }) =>
+            match.court === courtNumber &&
+            (admin || match.ref === s.uid) &&
+            match.a &&
+            match.b &&
+            (match.status === "live" || match.status === "scheduled"),
+        )
+      : [];
+  const nextMatch =
+    assigned.find(({ match }) => match.status === "live") || assigned[0];
+  useEffect(() => {
+    if (page === "court" && nextMatch) {
+      go("match", tid, nextMatch.event.id, nextMatch.match.id);
+    }
+  }, [page, tid, nextMatch?.event.id, nextMatch?.match.id]);
   const stats = {
     live: tournamentMatches.filter((x) => x.match.status === "live").length,
     final: tournamentMatches.filter((x) => x.match.status === "final").length,
@@ -226,7 +247,15 @@ function App() {
             {s.uid ? (
               <button onClick={() => run(() => logout())}>Sign out</button>
             ) : (
-              <button onClick={() => nav("signin")}>Staff sign in</button>
+              <button
+                onClick={() =>
+                  page === "court"
+                    ? document.getElementById("court-login")?.scrollIntoView()
+                    : nav("signin")
+                }
+              >
+                Staff sign in
+              </button>
             )}
           </div>
         </div>
@@ -290,7 +319,10 @@ function App() {
                   </select>
                 </Field>
               )}
-              {s.uid && (
+              {admin && page !== "admin" && (
+                <button onClick={() => nav("newdivision")}>Add division</button>
+              )}
+              {s.canCreate && (
                 <button onClick={() => nav("new")}>Create tournament</button>
               )}
             </div>
@@ -322,9 +354,27 @@ function App() {
               : ""}
           </div>
         )}
-        {page === "signin" ? (
+        {page === "court" ? (
+          <section className="panel" id="court-login">
+            <h2>
+              {validCourt ? t?.courts[courtNumber] : "Court"} umpire scoring
+            </h2>
+            {!s.uid ? (
+              <SignIn run={run} done={() => {}} />
+            ) : (
+              <p>
+                {!validCourt
+                  ? "This court is unavailable for your account."
+                  : nextMatch
+                    ? "Opening your match…"
+                    : "No playable match is assigned to you on this court. Ask the tournament admin to check the schedule and referee assignment."}
+              </p>
+            )}
+          </section>
+        ) : page === "signin" ? (
           <SignIn run={run} done={() => nav("ref")} />
-        ) : (page === "new" && s.uid) || (page === "newdivision" && admin) ? (
+        ) : (page === "new" && s.canCreate) ||
+          (page === "newdivision" && admin) ? (
           <Wizard
             key={page}
             existing={page === "newdivision" ? t! : undefined}
@@ -341,7 +391,7 @@ function App() {
           </div>
         ) : (
           <>
-            {["live", "tv", "court"].includes(page) && (
+            {["live", "tv", "board"].includes(page) && (
               <>
                 <div className="sectionhead">
                   <div>
@@ -350,7 +400,7 @@ function App() {
                       Scoreboard
                     </div>
                     <h2>
-                      {page === "court" ? t.courts[Number(mid)] : "Live courts"}
+                      {page === "board" ? t.courts[Number(mid)] : "Live courts"}
                     </h2>
                   </div>
                   <div className="actions">
@@ -386,7 +436,7 @@ function App() {
                 </div>
                 <div className="courtgrid">
                   {t.courts.map((_, i) =>
-                    page !== "court" || i === Number(mid) ? tile(i) : null,
+                    page !== "board" || i === Number(mid) ? tile(i) : null,
                   )}
                 </div>
               </>
@@ -568,22 +618,41 @@ function App() {
               <>
                 <h2>Tournament QR codes</h2>
                 <div className="courtgrid">
-                  {["Tournament", ...t.courts].map((label, i) => {
+                  {[
+                    {
+                      label: "Tournament scoreboard",
+                      route: "live",
+                      court: "",
+                    },
+                    ...t.courts.flatMap((name, i) => [
+                      {
+                        label: name + " · Umpire scoring",
+                        route: "court",
+                        court: String(i),
+                      },
+                      {
+                        label: name + " · Spectator scoreboard",
+                        route: "board",
+                        court: String(i),
+                      },
+                    ]),
+                  ].map(({ label, route, court }) => {
                     const u =
                       location.href.split("#")[0] +
                       "#" +
-                      (i ? "court" : "live") +
-                      "/" +
-                      tid +
-                      "/" +
-                      d.id +
-                      (i ? "/" + (i - 1) : "");
+                      [route, tid, d.id, court]
+                        .map(encodeURIComponent)
+                        .join("/");
                     return (
-                      <div className="panel" key={label}>
+                      <div className="panel" key={u}>
                         <h3>{label}</h3>
                         <QRCodeSVG value={u} size={144} />
                         <p>
-                          <a href={u}>Open scoreboard</a>
+                          <a href={u}>
+                            {route === "court"
+                              ? "Open umpire scoring"
+                              : "Open scoreboard"}
+                          </a>
                         </p>
                       </div>
                     );
@@ -1058,11 +1127,7 @@ function Admin({
           }}
         >
           <Field label="Account UID">
-            <input
-              required
-              name="uid"
-              placeholder="Referee user ID"
-            />
+            <input required name="uid" placeholder="Referee user ID" />
           </Field>
           <Field label="Access">
             <select name="role">

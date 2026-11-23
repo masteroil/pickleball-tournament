@@ -47,6 +47,7 @@ export async function call(path: string, p?: any) {
     return {
       uid,
       role,
+      canCreate: uid === "admin",
       catalog: records.map((r) => r.t),
       t: r?.t || null,
       events: r?.events || [],
@@ -54,6 +55,7 @@ export async function call(path: string, p?: any) {
     };
   }
   check(uid, "Sign in first");
+  if (p.mode === "create") check(uid === "admin", "Permission denied");
   return navigator.locks.request(key, () => {
     const state = load();
     const id = [uid, p.tid, p.requestId].join("/");

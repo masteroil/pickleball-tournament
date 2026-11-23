@@ -146,6 +146,13 @@ async function snapshot(tid: string, uid: string) {
       }
       return {
         uid,
+        canCreate: Boolean(
+          uid &&
+          (await collection("users").findOne(
+            { uid, organizer: true },
+            { session: s, projection: { _id: 1 } },
+          )),
+        ),
         role,
         catalog,
         t,

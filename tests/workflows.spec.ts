@@ -7,6 +7,25 @@ async function signIn(page: Page, role: string) {
     page.getByRole("heading", { name: "Referee desk" }),
   ).toBeVisible();
 }
+test("printed court QR keeps its court through umpire sign-in", async ({
+  page,
+}) => {
+  await page.goto("/#court/demo/mixed/0");
+  await page.getByRole("button", { name: "referee", exact: true }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/#match\/demo\/mixed\/P5$/);
+  await expect(
+    page.getByRole("button", { name: /^\+1 / }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create tournament" }),
+  ).toHaveCount(0);
+  await page.goto("/#court/demo/mixed/1");
+  await expect(page.getByText(/No playable match is assigned/)).toBeVisible();
+  await page.goto("/#board/demo/mixed/1");
+  await expect(page.getByRole("heading", { name: "Court 2" })).toBeVisible();
+});
+
 test("phone referee syncs with a separate spectator, goes offline and reconnects", async ({
   page,
   browser,
@@ -107,4 +126,18 @@ test("referee confirms a result and the desk corrects it with an audit trail", a
     admin.getByText(/Verified winner on score sheet/).last(),
   ).toBeVisible();
   await desk.close();
+});
+
+test("admin adds a division from the tournament selector", async ({ page }) => {
+  await page.goto("/");
+  await signIn(page, "admin");
+  await page.getByRole("button", { name: "Add division", exact: true }).click();
+  await page.getByLabel("Division name").fill("Open Doubles");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page
+    .getByRole("button", { name: "Create division", exact: true })
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "Division", exact: true }),
+  ).toContainText("Open Doubles");
 });

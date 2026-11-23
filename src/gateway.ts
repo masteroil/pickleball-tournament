@@ -2,6 +2,7 @@ import { requestId } from "./ids";
 import type { Tournament, Division, Audit, Staff } from "../shared/model";
 export const serverMode = Boolean(import.meta.env.VITE_API_URL);
 export type View = {
+  canCreate: boolean;
   catalog: Tournament[];
   t: Tournament | null;
   events: Division[];
@@ -10,6 +11,7 @@ export type View = {
   history: Record<string, Audit[]>;
 };
 export const empty: View = {
+  canCreate: false,
   catalog: [],
   t: null,
   events: [],

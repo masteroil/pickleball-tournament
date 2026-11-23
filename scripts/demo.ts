@@ -84,6 +84,7 @@ export function localDemo(): Plugin {
           r && (r.t.visible || ["admin", "referee"].includes(r.staff[uid]));
         return send({
           catalog,
+          canCreate: uid === "admin",
           t: allowed ? r.t : null,
           events: allowed ? r.events : [],
           role: allowed ? r.staff[uid] || "spectator" : "spectator",
@@ -134,6 +135,7 @@ export function localDemo(): Plugin {
         r = draft.records[p.tid],
         mode = p.mode;
       if (mode === "create") {
+        check(uid === "admin", "Permission denied");
         check(!r, "Duplicate tournament");
         draft.records[p.tid] = {
           t: tournament(p.tid, uid, p.tournament),
