@@ -29,16 +29,16 @@ describe("demo seed", () => {
     expect(demoDivision().matches[0].games[0][0]).toBe(15);
     expect(demoDivision().config.sizes).toEqual([4, 4]);
   });
-  it("leaves the seven real-event draws editable before schedule generation", () => {
+  it("leaves the eight real-event draws editable before schedule generation", () => {
     const events = guideEvents();
-    expect(events).toHaveLength(7);
-    expect(events.flatMap((d) => d.teams)).toHaveLength(80);
+    expect(events).toHaveLength(8);
+    expect(events.flatMap((d) => d.teams)).toHaveLength(93);
     expect(
       events.flatMap((d) => d.teams.flatMap((t) => t.players)),
-    ).toHaveLength(139);
+    ).toHaveLength(153);
     expect(events.flatMap((d) => d.matches)).toHaveLength(0);
-    expect(events.flatMap((d) => poolSchedule(d, 4))).toHaveLength(132);
-    expect(events.find((d) => d.id === "ocs")?.config.quarterRules).toEqual({
+    expect(events.flatMap((d) => poolSchedule(d, 4))).toHaveLength(166);
+    expect(events.find((d) => d.id === "ms")?.config.quarterRules).toEqual({
       target: 15,
       margin: 2,
       bestOf: 1,

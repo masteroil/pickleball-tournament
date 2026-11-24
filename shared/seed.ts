@@ -1,4 +1,5 @@
 import { newDivision, playoffs, poolSchedule } from "./engine";
+import { officialRoster } from "./official-roster";
 import { guideDivisions } from "./schedule";
 import type { Config, Division, Team, Tournament } from "./model";
 
@@ -90,7 +91,7 @@ export function demoDivision(): Division {
   return division;
 }
 
-/** The published guide has sizes and format only. Names are editable draw slots. */
+/** The guide lists entries in roster order. Initial pool positions can be edited before scheduling. */
 export function guideEvents(): Division[] {
   return guideDivisions.map((d) => {
     const config: Config = {
@@ -101,23 +102,15 @@ export function guideEvents(): Division[] {
       advance: d.qualifiersPerPool,
       wildcards: d.wildcards,
       doubleThree: d.doubleThree,
-      ...(d.code === "OCS"
+      ...(d.code === "MS"
         ? { quarterRules: { target: 15, margin: 2, bestOf: 1 } }
         : {}),
     };
+    let position = 0;
     const teams: Team[] = d.sizes.flatMap((size, pool) =>
-      Array.from({ length: size }, (_, i) => {
-        const slot = String.fromCharCode(65 + pool) + (i + 1);
-        const label = d.code + " " + slot;
-        return {
-          id: d.code + "-" + slot,
-          pool,
-          name: "Draw " + slot,
-          players:
-            config.type === "singles"
-              ? ["Player " + label]
-              : ["Player " + label + "-1", "Player " + label + "-2"],
-        };
+      Array.from({length:size}, () => {
+        const players = [...officialRoster[d.code][position++]];
+        return {id: d.code + "-" + position, name: players.join(" & "), players, pool};
       }),
     );
     return newDivision(d.code.toLowerCase(), config, teams);

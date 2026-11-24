@@ -163,14 +163,13 @@ export function Wizard({
             <select value={preset} onChange={(e) => setPreset(e.target.value)}>
               <option value="custom">Custom division</option>
               <option value="guide">
-                El Nido Open 2026 · 7 guide divisions
+                El Nido Open 2026 · 8 official divisions
               </option>
             </select>
           </Field>
           {preset === "guide" ? (
             <p>
-              Creates 80 editable entries in 20 pools. Register players from the
-              draw before generating the schedule.
+              Loads 93 roster entries into 21 pools in list order. Confirm the official draw before generating matches.
             </p>
           ) : (
             <div className="formgrid">

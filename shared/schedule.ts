@@ -11,68 +11,106 @@ export interface GuideDivision {
 /** El Nido Pickleball Open 2026, Tournament Format & Competition Structure, pp. 1–2. */
 export const guideDivisions: GuideDivision[] = [
   {
-    code: "OCS",
-    name: "Open Combined Singles",
-    sizes: [4, 4, 4, 4, 5],
-    qualifiersPerPool: 1,
-    wildcards: 3,
-    doubleThree: false,
-    type: "singles",
+    "code": "MS",
+    "name": "Men’s Singles",
+    "sizes": [
+      5,
+      5,
+      5,
+      5
+    ],
+    "qualifiersPerPool": 2,
+    "wildcards": 0,
+    "doubleThree": false,
+    "type": "singles"
   },
   {
-    code: "NX",
-    name: "Novice Mixed Doubles",
-    sizes: [4, 4, 4],
-    qualifiersPerPool: 1,
-    wildcards: 1,
-    doubleThree: false,
-    type: "doubles",
+    "code": "WS",
+    "name": "Women’s Singles",
+    "sizes": [
+      5,
+      4,
+      4
+    ],
+    "qualifiersPerPool": 1,
+    "wildcards": 1,
+    "doubleThree": false,
+    "type": "singles"
   },
   {
-    code: "NM",
-    name: "Novice Men’s Doubles",
-    sizes: [4, 4, 3],
-    qualifiersPerPool: 1,
-    wildcards: 1,
-    doubleThree: true,
-    type: "doubles",
+    "code": "NX",
+    "name": "Novice Mixed Doubles",
+    "sizes": [
+      5,
+      4,
+      4
+    ],
+    "qualifiersPerPool": 1,
+    "wildcards": 1,
+    "doubleThree": false,
+    "type": "doubles"
   },
   {
-    code: "BX",
-    name: "Beginner Mixed Doubles",
-    sizes: [4, 4, 3],
-    qualifiersPerPool: 1,
-    wildcards: 1,
-    doubleThree: true,
-    type: "doubles",
+    "code": "BX",
+    "name": "Beginner Mixed Doubles",
+    "sizes": [
+      4,
+      4,
+      3
+    ],
+    "qualifiersPerPool": 1,
+    "wildcards": 1,
+    "doubleThree": true,
+    "type": "doubles"
   },
   {
-    code: "BM",
-    name: "Beginner Men’s Doubles",
-    sizes: [4, 4, 3],
-    qualifiersPerPool: 1,
-    wildcards: 1,
-    doubleThree: true,
-    type: "doubles",
+    "code": "NM",
+    "name": "Novice Men’s Doubles",
+    "sizes": [
+      5,
+      5
+    ],
+    "qualifiersPerPool": 2,
+    "wildcards": 0,
+    "doubleThree": false,
+    "type": "doubles"
   },
   {
-    code: "BW",
-    name: "Beginner Women’s Doubles",
-    sizes: [5, 4],
-    qualifiersPerPool: 2,
-    wildcards: 0,
-    doubleThree: false,
-    type: "doubles",
+    "code": "BM",
+    "name": "Beginner Men’s Doubles",
+    "sizes": [
+      4,
+      4,
+      4
+    ],
+    "qualifiersPerPool": 1,
+    "wildcards": 1,
+    "doubleThree": false,
+    "type": "doubles"
   },
   {
-    code: "NW",
-    name: "Novice Women’s Doubles",
-    sizes: [5],
-    qualifiersPerPool: 4,
-    wildcards: 0,
-    doubleThree: false,
-    type: "doubles",
+    "code": "NW",
+    "name": "Novice Women’s Doubles",
+    "sizes": [
+      5
+    ],
+    "qualifiersPerPool": 4,
+    "wildcards": 0,
+    "doubleThree": false,
+    "type": "doubles"
   },
+  {
+    "code": "BW",
+    "name": "Beginner Women’s Doubles",
+    "sizes": [
+      5,
+      4
+    ],
+    "qualifiersPerPool": 2,
+    "wildcards": 0,
+    "doubleThree": false,
+    "type": "doubles"
+  }
 ];
 
 export interface ScheduledPair {

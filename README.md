@@ -13,7 +13,7 @@ Use Node 22.13 or newer. Run `npm ci` and `npm run dev`. The development demo us
 ## Run a tournament
 
 1. Sign in and select **Create tournament**. Enter the organizer, venue, date, timezone and comma-separated court names.
-2. Choose a custom division or the seven-division El Nido preset. Custom defaults to eight teams and two pools. Edit placeholder names and register the actual players. Adjust the pool draw before scheduling.
+2. Choose a custom division or the eight-division El Nido preset. Custom defaults to eight teams and two pools. The El Nido preset includes the official participants and doubles partners in roster order. Confirm the pool draw before scheduling.
 3. From **Manage**, generate the schedule. Add divisions separately if needed. Under **Referee permissions**, grant the referee account UID access to this tournament. In **Schedule**, assign its UID to a match. Court and referee conflicts are checked across divisions.
 4. Referees start a match, award or undo points, start subsequent games and review the winner before confirmation. Public scores and standings update automatically. A flagged forfeit, retirement or withdrawal goes to the desk for adjudication.
 5. When every pool result is confirmed, generate playoffs. Resolve statistical ties in Manage by entering the ordered team IDs and reason. Confirming a semifinal advances its winner. The championship card names the champion.
@@ -23,15 +23,18 @@ Pool schedules use sixteen half-hour slots per day from 09:00 local venue time, 
 
 ## El Nido event preset
 
-The division rows govern the draw. They total 20 pools, 132 pool matches and 25 knockout matches, for 157 matches and 139 player slots. The printed guide summary gives inconsistent stage counts. The eight-team practice event is a separate dataset.
+The updated guide lists 93 entries across eight divisions. Its division rows total 21 pools, 166 pool matches and 28 knockout matches for 194 matches. The summary row lists 19 pools. The preset follows the division rows.
 
 | Division | Pools | Qualifiers |
 |---|---|---|
-| Open Combined Singles | 4, 4, 4, 4, 5 | Five winners and three best runners-up |
-| Novice Mixed Doubles | 4, 4, 4 | Three winners and one runner-up |
-| Novice Men's, Beginner Mixed, Beginner Men's Doubles | 4, 4, 3 each | Three winners and one runner-up per division |
-| Beginner Women's Doubles | 5, 4 | Top two per pool, crossed semifinals |
-| Novice Women's Doubles | 5 | Top four |
+| Men’s Singles | 5, 5, 5, 5 | 2 per pool |
+| Women’s Singles | 5, 4, 4 | 1 per pool plus one runner-up |
+| Novice Mixed Doubles | 5, 4, 4 | 1 per pool plus one runner-up |
+| Beginner Mixed Doubles | 4, 4, 3 | 1 per pool plus one runner-up |
+| Novice Men’s Doubles | 5, 5 | 2 per pool |
+| Beginner Men’s Doubles | 4, 4, 4 | 1 per pool plus one runner-up |
+| Novice Women’s Doubles | 5 | 4 per pool |
+| Beginner Women’s Doubles | 5, 4 | 2 per pool |
 
 Three-entry pools in the specified divisions play twice. Local ranking uses win percentage, points won percentage and eligible head-to-head results. Unresolved places require a recorded decision. Pool games and singles quarterfinals go to 15, win by two. Semifinals and finals use best of three to 11, win by two.
 

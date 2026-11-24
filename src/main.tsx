@@ -11,6 +11,8 @@ import {
   type Division,
   type Tournament,
 } from "../shared/model";
+import { guideDivisions } from "../shared/schedule";
+import { officialRoster } from "../shared/official-roster";
 import { table } from "../shared/engine";
 import { Field, Wizard, TeamEditor, pool, type Run } from "./forms";
 import "./style.css";
@@ -142,6 +144,7 @@ function App() {
     ["schedule", "Schedule"],
     ["standings", "Standings"],
     ["bracket", "Playoffs"],
+    ...(tid === "demo" ? [["roster", "Official roster"]] : []),
   ];
   const tournamentMatches = s.events
     .flatMap((event) => event.matches.map((match) => ({ event, match })))
@@ -354,7 +357,18 @@ function App() {
               : ""}
           </div>
         )}
-        {page === "court" ? (
+        {page === "roster" ? (
+          <section>
+            <h2>El Nido Pickleball Open 2026 · Official roster</h2>
+            <p>93 entries across 8 divisions · December 4–6, El Nido Pickle Park</p>
+            {guideDivisions.map(({code,name}) => (
+              <section className="panel" key={code}>
+                <h3>{name} ({officialRoster[code].length})</h3>
+                <ol>{officialRoster[code].map((players,i) => <li key={i}>{players.join(" & ")}</li>)}</ol>
+              </section>
+            ))}
+          </section>
+        ) : page === "court" ? (
           <section className="panel" id="court-login">
             <h2>
               {validCourt ? t?.courts[courtNumber] : "Court"} umpire scoring

@@ -55,7 +55,7 @@ describe("round robin and court allocation", () => {
     expect(() => schedule([["a"], ["a"]], 1)).toThrow();
     expect(() => schedule([["a", "b"]], 0)).toThrow();
   });
-  it("reconstructs all seven divisions from the guide", () => {
+  it("reconstructs all eight divisions from the guide", () => {
     const counts = guideDivisions.map((d) => {
       const teams = d.sizes.map((n, p) =>
         Array.from({ length: n }, (_, i) => p + "-" + i),
@@ -64,15 +64,16 @@ describe("round robin and court allocation", () => {
       return [schedule(teams, 3, d.doubleThree).length, entrants - 1];
     });
     expect(counts).toEqual([
-      [34, 7],
+      [40, 7],
+      [22, 3],
+      [22, 3],
       [18, 3],
+      [20, 3],
       [18, 3],
-      [18, 3],
-      [18, 3],
-      [16, 3],
       [10, 3],
+      [16, 3],
     ]);
-    expect(counts.flat().reduce((a, b) => a + b, 0)).toBe(157);
+    expect(counts.flat().reduce((a, b) => a + b, 0)).toBe(194);
   });
 });
 
