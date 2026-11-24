@@ -4,7 +4,7 @@ import { rateLimit } from "express-rate-limit";
 import { Server } from "socket.io";
 import { createServer } from "node:http";
 import { createHmac, randomBytes, createHash } from "node:crypto";
-import { verify } from "@node-rs/argon2";
+import { hash, verify } from "@node-rs/argon2";
 import { z } from "zod";
 import {
   client,
@@ -43,6 +43,7 @@ const id = z
   .string()
   .regex(/^[a-zA-Z0-9_-]{1,128}$/)
   .refine((v) => !(v in Object.prototype));
+const username = z.string().regex(/^[a-z][a-z0-9_-]{2,31}$/).refine((v) => !(v in Object.prototype));
 const input = z
   .object({
     tid: id,
@@ -76,10 +77,10 @@ app.post(
   rateLimit({ windowMs: 60000, limit: 15 }),
   async (req, res) => {
     const { email, password } = z
-      .object({ email: z.email(), password: z.string().max(256) })
+      .object({ email: z.string().trim().toLowerCase().pipe(z.union([z.email(), username])), password: z.string().max(256) })
       .parse(req.body);
     const user = await collection("users").findOne({
-      email: email.toLowerCase(),
+      ...(email.includes("@") ? { email } : { uid: email, username: email }),
     });
     if (!user || !(await verify(user.hash, password))) {
       res.status(401).json({ error: "Invalid sign in" });
@@ -97,6 +98,7 @@ app.post(
         httpOnly: true,
         secure,
         sameSite,
+        partitioned: sameSite === "none",
         maxAge,
         path: "/",
       })
@@ -108,7 +110,7 @@ app.post("/api/logout", async (req, res) => {
     digest: cookieDigest(req.headers.cookie),
   });
   res
-    .clearCookie("pb_session", { path: "/", httpOnly: true, secure, sameSite })
+    .clearCookie("pb_session", { path: "/", httpOnly: true, secure, sameSite, partitioned: sameSite === "none" })
     .json({ ok: true });
 });
 async function snapshot(tid: string, uid: string) {
@@ -221,14 +223,14 @@ app.post(
     }
     if (p.mode === "staff") {
       id.parse(p.uid);
-      check(
-        await collection("users").findOne({ uid: p.uid }),
-        "Unknown staff account",
-      );
+      if (p.accessCode !== undefined) {
+        username.parse(p.uid);
+        z.string().min(8).max(128).parse(p.accessCode);
+        check(p.role === "referee", "Invalid role");
+      }
     }
-    const signature = createHash("sha256")
-      .update(JSON.stringify(p))
-      .digest("hex");
+    const signature = p.accessCode !== undefined ? digest(JSON.stringify(p)) :
+      createHash("sha256").update(JSON.stringify(p)).digest("hex");
     const key = {
       tournamentId: p.tid,
       eventId: p.eid,
@@ -265,6 +267,17 @@ app.post(
             "Request ID reused",
           );
           return previous.result;
+        }
+        if (p.mode === "staff") {
+          if (p.accessCode !== undefined) {
+            check(!(await collection("users").findOne({ uid: p.uid }, { session: s })), "Username already taken");
+            await collection("users").insertOne({
+              uid: p.uid, username: p.uid, email: p.uid, organizer: false,
+              hash: await hash(p.accessCode),
+            }, { session: s });
+          } else {
+            check(await collection("users").findOne({ uid: p.uid }, { session: s }), "Unknown staff account");
+          }
         }
         const record = change(r, uid, p);
         const changed =
@@ -316,4 +329,14 @@ app.use(
   },
 );
 await initialize();
+// Only a service operator with private environment access can bootstrap an organizer.
+if (process.env.ORGANIZER_EMAIL && process.env.ORGANIZER_PASSWORD) {
+  const email = z.email().parse(process.env.ORGANIZER_EMAIL.trim().toLowerCase());
+  if (!(await collection("users").findOne({ email }))) {
+    const password = z.string().min(12).max(256).parse(process.env.ORGANIZER_PASSWORD);
+    await collection("users").updateOne({ email }, { $setOnInsert: {
+      email, uid: randomBytes(16).toString("hex"), organizer: true, hash: await hash(password),
+    } }, { upsert: true });
+  }
+}
 server.listen(Number(process.env.PORT || 4100));

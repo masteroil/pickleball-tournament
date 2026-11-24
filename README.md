@@ -54,3 +54,9 @@ The React client and PWA are under src and public. Shared modules validate draws
 Run `npm run build`, `npm test`, `npx playwright install chromium` and `npm run e2e`. CHROMIUM_PATH can select an existing Chromium executable. For the API checks, start a disposable loopback replica set and the API with MONGODB_DB=test_tournament, PORT=4100, CLIENT_ORIGIN=http://localhost:5173, and a test SESSION_SECRET. Export the same MONGODB_URI and MONGODB_DB to the test shell and run `node --import tsx tests/mongo-integration.ts`. The test refuses remote databases and creates unique synthetic records.
 
 The local preset implements the event guide. The alternate USA Pickleball preset covers supported scoring formats and ranking criteria. Officials manually adjudicate incidents and service changes. Cross-division entrants must be checked for personal scheduling conflicts. Match histories and tournament-wide transactions target small events.
+
+### First organizer and umpire access
+
+In the Render service environment, set ORGANIZER_EMAIL and ORGANIZER_PASSWORD (12–256 characters), save, and deploy. Startup creates the organizer if the email is unused and preserves existing accounts. After the first successful sign-in, remove both variables and deploy again. Use the organizer email and password at Staff sign in.
+
+In a tournament, open Manage → Referee permissions. Choose a unique lowercase username and a private code of at least eight characters for each umpire. Share their code privately. In Schedule → Assign, enter the username for each match. The court QR contains the court link. The umpire signs in with their username and code and can score assigned matches. To remove an umpire's access, change their tournament access to spectator.

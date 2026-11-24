@@ -150,10 +150,14 @@ function App() {
     .flatMap((event) => event.matches.map((match) => ({ event, match })))
     .sort((a, b) => a.match.slot - b.match.slot);
   const courtNumber = /^\d+$/.test(mid) ? Number(mid) : -1;
+  const [courtLogin, setCourtLogin] = useState("");
+  const courtKey = JSON.stringify([tid, mid, s.uid]);
+  useEffect(() => { if (page !== "court") setCourtLogin(""); }, [page]);
+  const needsCourtCode = serverMode && !admin && courtLogin !== courtKey;
   const validCourt =
     t?.id === tid && courtNumber >= 0 && courtNumber < t.courts.length;
   const assigned =
-    page === "court" && validCourt && staff
+    page === "court" && validCourt && staff && !needsCourtCode
       ? tournamentMatches.filter(
           ({ match }) =>
             match.court === courtNumber &&
@@ -373,8 +377,8 @@ function App() {
             <h2>
               {validCourt ? t?.courts[courtNumber] : "Court"} umpire scoring
             </h2>
-            {!s.uid ? (
-              <SignIn run={run} done={() => {}} />
+            {!s.uid || needsCourtCode ? (
+              <SignIn court={serverMode} run={run} done={(name) => setCourtLogin(JSON.stringify([tid, mid, name]))} />
             ) : (
               <p>
                 {!validCourt
@@ -691,7 +695,7 @@ function Status({ value }: { value: string }) {
     </span>
   );
 }
-function SignIn({ run, done }: { run: Run; done: () => void }) {
+function SignIn({ run, done, court = false }: { run: Run; done: (name: string) => void; court?: boolean }) {
   const [email, em] = useState(""),
     [password, pw] = useState("");
   return (
@@ -699,21 +703,24 @@ function SignIn({ run, done }: { run: Run; done: () => void }) {
       className="form panel narrow"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (await run(() => login(email, password))) done();
+        const name = email.trim().toLowerCase();
+        if (await run(() => login(name, password))) done(name);
       }}
     >
       <div className="eyebrow">Tournament staff</div>
       <h2>Sign in</h2>
-      <Field label="Email">
+      <Field label={court ? "Umpire username" : serverMode ? "Organizer email or umpire username" : "Email"}>
         <input
           autoComplete="username"
-          type="email"
+          type={serverMode ? "text" : "email"}
+          autoCapitalize="none"
+          pattern={court ? "[a-zA-Z][a-zA-Z0-9_\\-]{2,31}" : undefined}
           required
           value={email}
           onChange={(e) => em(e.target.value)}
         />
       </Field>
-      <Field label="Password">
+      <Field label={court ? "Umpire code" : serverMode ? "Password or umpire code" : "Password"}>
         <input
           autoComplete="current-password"
           type="password"
@@ -827,7 +834,7 @@ function MatchList({
                     defaultValue={x.slot}
                   />
                 </Field>
-                <Field label="Referee UID">
+                <Field label="Umpire username or account ID">
                   <input name="ref" defaultValue={x.ref} />
                 </Field>
                 <button>Save assignment</button>
@@ -1132,6 +1139,23 @@ function Admin({
       </details>
       <details className="panel">
         <summary>Referee permissions</summary>
+        {serverMode && <form className="teamrow" onSubmit={async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const fields = new FormData(form);
+          if (await send("staff", {
+            uid: String(fields.get("username")).trim().toLowerCase(),
+            role: "referee", accessCode: fields.get("code"),
+          })) form.reset();
+        }}>
+          <Field label="New umpire username">
+            <input name="username" required pattern="[a-z][a-z0-9_\-]{2,31}" placeholder="e.g. court1umpire" />
+          </Field>
+          <Field label="Private umpire code (8+ characters)">
+            <input name="code" type="password" autoComplete="new-password" required minLength={8} maxLength={128} />
+          </Field>
+          <button>Create umpire</button>
+        </form>}
         <form
           className="teamrow"
           onSubmit={(e) => {
@@ -1140,7 +1164,7 @@ function Admin({
             send("staff", { uid: f.get("uid"), role: f.get("role") });
           }}
         >
-          <Field label="Account UID">
+          <Field label="Existing username or account ID">
             <input required name="uid" placeholder="Referee user ID" />
           </Field>
           <Field label="Access">
