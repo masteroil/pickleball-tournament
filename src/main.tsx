@@ -144,7 +144,7 @@ function App() {
     ["schedule", "Schedule"],
     ["standings", "Standings"],
     ["bracket", "Playoffs"],
-    ...(tid === "demo" ? [["roster", "Official roster"]] : []),
+    ...(!tid || tid === "demo" ? [["roster", "Official roster"]] : []),
   ];
   const tournamentMatches = s.events
     .flatMap((event) => event.matches.map((match) => ({ event, match })))

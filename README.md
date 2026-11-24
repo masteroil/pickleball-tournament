@@ -45,7 +45,7 @@ Three-entry pools in the specified divisions play twice. Local ranking uses win 
 3. Provision a user from the backend terminal. Set ACCOUNT_EMAIL and ACCOUNT_PASSWORD in the process environment using your secret manager or a hidden prompt. Run `npm run account -- --organizer` for a tournament creator, or `npm run account` for a referee. Save the returned user ID for staff and match assignment. Clear the provisioning variables after use.
 4. Put `VITE_API_URL=http://localhost:4100` in the frontend’s `.env.local`, restart Vite and open `http://localhost:5173`. Sign in with the organizer account to create the first tournament. Every staff member uses their own account.
 5. For production, run the API on a persistent HTTPS Node host that supports WebSocket upgrades. Set NODE_ENV=production. For the supplied Pages address, CLIENT_ORIGIN is `https://masteroil.github.io`. Different-site hosting requires CROSS_SITE_COOKIE=true and browsers that allow cross-site cookies. For phones that block these cookies, use a custom Pages domain and an API subdomain under the same registrable domain.
-6. Build with the public HTTPS API origin in VITE_API_URL. Publish the contents of dist to the gh-pages branch, keeping .nojekyll at its root. The existing Pages deployment runs the isolated demo. Set database secrets only on the backend host.
+6. Run `npm run build:pages` to build for the hosted Render API. Publish the contents of dist to the gh-pages branch, keeping .nojekyll at its root. Set database secrets only on the backend host.
 
 ## Implementation and verification
 
