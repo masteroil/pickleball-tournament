@@ -1,3 +1,4 @@
+import { Bracket } from "./bracket";
 import { requestId as newId } from "./ids";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -143,7 +144,7 @@ function App() {
     ["live", "Live courts"],
     ["schedule", "Schedule"],
     ["standings", "Standings"],
-    ["bracket", "Playoffs"],
+    ["bracket", "Bracket"],
     ...(!tid || tid === "demo" ? [["roster", "Official roster"]] : []),
   ];
   const tournamentMatches = s.events
@@ -156,12 +157,13 @@ function App() {
   const needsCourtCode = serverMode && !admin && courtLogin !== courtKey;
   const validCourt =
     t?.id === tid && courtNumber >= 0 && courtNumber < t.courts.length;
+  const canScore = (match: Match) => admin || (s.role === "referee" && (s.court == null || s.court === match.court) && (match.ref === s.uid || (s.court === match.court && !match.ref)));
   const assigned =
     page === "court" && validCourt && staff && !needsCourtCode
       ? tournamentMatches.filter(
           ({ match }) =>
             match.court === courtNumber &&
-            (admin || match.ref === s.uid) &&
+            canScore(match) &&
             match.a &&
             match.b &&
             (match.status === "live" || match.status === "scheduled"),
@@ -251,18 +253,11 @@ function App() {
             >
               {conn}
             </span>
+            {s.umpireName && <strong>{s.umpireName}</strong>}
             {s.uid ? (
               <button onClick={() => run(() => logout())}>Sign out</button>
             ) : (
-              <button
-                onClick={() =>
-                  page === "court"
-                    ? document.getElementById("court-login")?.scrollIntoView()
-                    : nav("signin")
-                }
-              >
-                Staff sign in
-              </button>
+              page !== "court" && <button onClick={() => nav("signin")}>{serverMode ? "Organizer sign in" : "Practice sign in"}</button>
             )}
           </div>
         </div>
@@ -378,19 +373,29 @@ function App() {
               {validCourt ? t?.courts[courtNumber] : "Court"} umpire scoring
             </h2>
             {!s.uid || needsCourtCode ? (
-              <SignIn court={serverMode} run={run} done={(name) => setCourtLogin(JSON.stringify([tid, mid, name]))} />
+              serverMode ? <form className="form narrow" onSubmit={async e => {
+                e.preventDefault();
+                const code = String(new FormData(e.currentTarget).get("code"));
+                await run(async () => {
+                  const uid = await (await import("./remote")).enterCourt(tid, courtNumber, code);
+                  setCourtLogin(JSON.stringify([tid, mid, uid]));
+                });
+              }}>
+                <Field label="Enter umpire code"><input type="password" inputMode="numeric" name="code" required pattern="[0-9]{5,12}" autoComplete="off" /></Field>
+                <button className="primary">Open court scoring</button>
+              </form> : <SignIn run={run} done={() => {}} />
             ) : (
               <p>
                 {!validCourt
                   ? "This court is unavailable for your account."
                   : nextMatch
                     ? "Opening your match…"
-                    : "No playable match is assigned to you on this court. Ask the tournament admin to check the schedule and referee assignment."}
+                    : "No available match on this court. Check the schedule for the next game."}
               </p>
             )}
           </section>
         ) : page === "signin" ? (
-          <SignIn run={run} done={() => nav("ref")} />
+          <SignIn run={run} done={() => nav(serverMode ? "live" : "ref")} />
         ) : (page === "new" && s.canCreate) ||
           (page === "newdivision" && admin) ? (
           <Wizard
@@ -561,58 +566,7 @@ function App() {
                     A corrected result requires administrator review.
                   </p>
                 )}
-                <div className="rounds">
-                  {Array.from(
-                    new Set(
-                      d.matches
-                        .filter((m) => m.phase === "playoff")
-                        .map((m) => m.round),
-                    ),
-                  ).map((r, _, rounds) => (
-                    <section key={r}>
-                      <h3>
-                        {r === rounds.at(-1)
-                          ? "Championship"
-                          : r === rounds.at(-2)
-                            ? "Semifinals"
-                            : "Round " + (r + 1)}
-                      </h3>
-                      {d.matches
-                        .filter((m) => m.phase === "playoff" && m.round === r)
-                        .map((x) => (
-                          <button
-                            className="bracketcard"
-                            key={x.id}
-                            onClick={() => nav("match", x.id)}
-                          >
-                            <small>
-                              Match {x.id} · {x.status}
-                            </small>
-                            <strong>
-                              {x.a
-                                ? names(x.a)
-                                : x.fromA
-                                  ? "Winner of " + x.fromA
-                                  : "Pending qualifier"}
-                            </strong>
-                            <strong>
-                              {x.b
-                                ? names(x.b)
-                                : x.fromB
-                                  ? "Winner of " + x.fromB
-                                  : "Pending qualifier"}
-                            </strong>
-                            {x.winner && (
-                              <b>
-                                {r === rounds.at(-1) ? "Champion" : "Winner"} ·{" "}
-                                {names(x.winner)}
-                              </b>
-                            )}
-                          </button>
-                        ))}
-                    </section>
-                  ))}
-                </div>
+                <Bracket matches={d.matches} names={names} open={id => nav("match", id)} />
                 {!d.matches.some((m) => m.phase === "playoff") && (
                   <p>Playoff matchups appear after seeding.</p>
                 )}
@@ -622,7 +576,7 @@ function App() {
               <Scoring
                 key={m.id}
                 {...{ t, d, m, names, action, admin }}
-                edit={admin || (s.role === "referee" && s.uid === m.ref)}
+                edit={canScore(m)}
                 blocked={offline || link !== "Connected" || busy}
                 history={(s.history[d.id] || []).filter(
                   (a) => a.match === m.id,
@@ -630,7 +584,7 @@ function App() {
               />
             )}
             {page === "admin" && admin && (
-              <Admin key={d.id} {...{ t, d, action, send, nav }} />
+              <Admin umpires={s.umpires || []} key={d.id} {...{ t, d, action, send, nav }} />
             )}
             {page === "share" && (
               <>
@@ -695,7 +649,7 @@ function Status({ value }: { value: string }) {
     </span>
   );
 }
-function SignIn({ run, done, court = false }: { run: Run; done: (name: string) => void; court?: boolean }) {
+function SignIn({ run, done }: { run: Run; done: (name: string) => void }) {
   const [email, em] = useState(""),
     [password, pw] = useState("");
   return (
@@ -709,18 +663,17 @@ function SignIn({ run, done, court = false }: { run: Run; done: (name: string) =
     >
       <div className="eyebrow">Tournament staff</div>
       <h2>Sign in</h2>
-      <Field label={court ? "Umpire username" : serverMode ? "Organizer email or umpire username" : "Email"}>
+      <Field label={serverMode ? "Organizer email" : "Email"}>
         <input
           autoComplete="username"
-          type={serverMode ? "text" : "email"}
+          type="email"
           autoCapitalize="none"
-          pattern={court ? "[a-zA-Z][a-zA-Z0-9_\\-]{2,31}" : undefined}
           required
           value={email}
           onChange={(e) => em(e.target.value)}
         />
       </Field>
-      <Field label={court ? "Umpire code" : serverMode ? "Password or umpire code" : "Password"}>
+      <Field label="Password">
         <input
           autoComplete="current-password"
           type="password"
@@ -1049,6 +1002,7 @@ function Scoring({
   );
 }
 function Admin({
+  umpires,
   t,
   d,
   action,
@@ -1060,6 +1014,7 @@ function Admin({
   action: ActionFn;
   send: (mode: string, data: any) => Promise<boolean>;
   nav: (p: string) => void;
+  umpires: {uid:string; name:string; active:boolean}[];
 }) {
   const [teams, setTeams] = useState(d.teams);
   return (
@@ -1138,24 +1093,28 @@ function Admin({
         )}
       </details>
       <details className="panel">
-        <summary>Referee permissions</summary>
+        <summary>Umpire codes and access</summary>
         {serverMode && <form className="teamrow" onSubmit={async (e) => {
           e.preventDefault();
           const form = e.currentTarget;
           const fields = new FormData(form);
           if (await send("staff", {
-            uid: String(fields.get("username")).trim().toLowerCase(),
-            role: "referee", accessCode: fields.get("code"),
+            name: fields.get("name"),
+            role: "referee", pin: fields.get("code"),
           })) form.reset();
         }}>
-          <Field label="New umpire username">
-            <input name="username" required pattern="[a-z][a-z0-9_\-]{2,31}" placeholder="e.g. court1umpire" />
+          <Field label="Umpire name">
+            <input name="name" required maxLength={64} placeholder="e.g. Patot" />
           </Field>
-          <Field label="Private umpire code (8+ characters)">
-            <input name="code" type="password" autoComplete="new-password" required minLength={8} maxLength={128} />
+          <Field label="Private umpire code (5–12 digits)">
+            <input name="code" type="password" autoComplete="new-password" required inputMode="numeric" pattern="[0-9]{5,12}" />
           </Field>
           <button>Create umpire</button>
         </form>}
+        {umpires.map(u => <div className="teamrow" key={u.uid}>
+          <strong>{u.name}</strong><span>{u.active ? "Active" : "Inactive"}</span>
+          <button onClick={() => send("staff", {uid:u.uid, role:u.active ? "spectator" : "referee"})}>{u.active ? "Disable code" : "Enable code"}</button>
+        </div>)}
         <form
           className="teamrow"
           onSubmit={(e) => {

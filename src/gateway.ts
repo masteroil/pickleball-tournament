@@ -2,6 +2,9 @@ import { requestId } from "./ids";
 import type { Tournament, Division, Audit, Staff } from "../shared/model";
 export const serverMode = Boolean(import.meta.env.VITE_API_URL);
 export type View = {
+  umpireName?: string;
+  court?: number | null;
+  umpires?: {uid:string; name:string; active:boolean}[];
   canCreate: boolean;
   catalog: Tournament[];
   t: Tournament | null;

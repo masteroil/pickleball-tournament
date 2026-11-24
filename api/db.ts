@@ -13,6 +13,7 @@ export const client = new MongoClient(
 export const db = client.db(process.env.MONGODB_DB || "pickleball");
 export const collection = (name: string) => db.collection<any>(name);
 const scopes: Record<string, string[]> = {
+  umpireCodes: ["tournamentId", "uid", "name", "key"],
   users: ["email", "hash", "uid"],
   sessions: ["digest", "uid", "expires"],
   tournaments: ["tournamentId", "value", "version"],
@@ -46,6 +47,7 @@ export async function initialize() {
       );
   }
   for (const [name, keys] of Object.entries({
+    umpireCodes: { tournamentId: 1, key: 1 },
     users: { email: 1 },
     sessions: { digest: 1 },
     tournaments: { tournamentId: 1 },

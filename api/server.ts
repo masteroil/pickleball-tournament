@@ -26,13 +26,15 @@ const digest = (token: string) =>
   createHmac("sha256", secret).update(token).digest("hex");
 const cookieDigest = (cookies = "") =>
   digest(cookies.match(/(?:^|; *)pb_session=([a-f0-9]{64})(?:;|$)/)?.[1] || "");
-const identity = async (cookies?: string) =>
-  (
-    await collection("sessions").findOne({
-      digest: cookieDigest(cookies),
-      expires: { $gt: new Date() },
-    })
-  )?.uid || "";
+const sessionFor = (cookies?: string, bearer?: string) =>
+  collection("sessions").findOne({
+    digest: bearer ? digest(bearer) : cookieDigest(cookies),
+    expires: { $gt: new Date() },
+  });
+const requestSession = (req: express.Request) =>
+  sessionFor(req.headers.cookie, req.get("Authorization")?.replace(/^Bearer /, ""));
+const pin = z.string().regex(/^\d{5,12}$/);
+const pinKey = (tid: string, code: string) => digest(JSON.stringify(["umpire", tid, code]));
 const app = express(),
   server = createServer(app);
 const io = new Server(server, {
@@ -77,10 +79,10 @@ app.post(
   rateLimit({ windowMs: 60000, limit: 15 }),
   async (req, res) => {
     const { email, password } = z
-      .object({ email: z.string().trim().toLowerCase().pipe(z.union([z.email(), username])), password: z.string().max(256) })
+      .object({ email: z.string().trim().toLowerCase().pipe(z.email()), password: z.string().max(256) })
       .parse(req.body);
     const user = await collection("users").findOne({
-      ...(email.includes("@") ? { email } : { uid: email, username: email }),
+      email, organizer: true,
     });
     if (!user || !(await verify(user.hash, password))) {
       res.status(401).json({ error: "Invalid sign in" });
@@ -105,9 +107,22 @@ app.post(
       .json({ ok: true });
   },
 );
+app.post("/api/court-entry", rateLimit({ windowMs: 60000, limit: 12, skipSuccessfulRequests: true }), async (req, res) => {
+  const { tid, court, code } = z.object({tid: id, court: z.number().int().nonnegative(), code: pin}).parse(req.body);
+  const credential = await collection("umpireCodes").findOne({ tournamentId: tid, key: pinKey(tid, code) });
+  const tournament = await collection("tournaments").findOne({ tournamentId: tid });
+  if (!credential || !tournament || court >= tournament.value.courts.length ||
+      !(await collection("tournamentStaff").findOne({tournamentId: tid, uid: credential.uid, role: "referee"}))) {
+    res.status(401).json({error: "Invalid court or umpire code"});
+    return;
+  }
+  const token = randomBytes(32).toString("hex");
+  await collection("sessions").insertOne({ uid: credential.uid, name: credential.name, tid, court, digest: digest(token), expires: new Date(Date.now() + 12 * 3600000) });
+  res.json({ token, uid: credential.uid });
+});
 app.post("/api/logout", async (req, res) => {
   await collection("sessions").deleteOne({
-    digest: cookieDigest(req.headers.cookie),
+    digest: (await requestSession(req))?.digest || "",
   });
   res
     .clearCookie("pb_session", { path: "/", httpOnly: true, secure, sameSite, partitioned: sameSite === "none" })
@@ -156,6 +171,7 @@ async function snapshot(tid: string, uid: string) {
           )),
         ),
         role,
+        umpires: role === "admin" ? (await collection("umpireCodes").find({tournamentId: tid}, {session:s}).toArray()).map(v => ({uid:v.uid, name:v.name, active: data?.staff[v.uid] === "referee"})) : [],
         catalog,
         t,
         history,
@@ -168,17 +184,16 @@ async function snapshot(tid: string, uid: string) {
   );
 }
 app.get("/api/read", async (req, res) => {
-  res.json(
-    await snapshot(
-      String(req.query.tid || ""),
-      await identity(req.headers.cookie),
-    ),
-  );
+  const tid = String(req.query.tid || "");
+  const session = await requestSession(req);
+  const uid = !session?.tid || session.tid === tid ? session?.uid || "" : "";
+  res.json({...await snapshot(tid, uid), umpireName: session?.tid === tid ? session.name : undefined, court: session?.tid === tid ? session.court : null});
 });
 io.use(async (socket, next) => {
   try {
-    const uid = await identity(socket.request.headers.cookie),
-      tid = String(socket.handshake.auth.tid || "");
+    const session = await sessionFor(socket.request.headers.cookie, socket.handshake.auth.token);
+    const tid = String(socket.handshake.auth.tid || "");
+    const uid = !session?.tid || session.tid === tid ? session?.uid || "" : "";
     if (tid && !(await snapshot(tid, uid))?.t)
       return next(Error("Unavailable tournament"));
     socket.data.tid = tid;
@@ -197,7 +212,8 @@ app.post(
     "/api/matches/:match/confirm",
   ],
   async (req, res) => {
-    const uid = await identity(req.headers.cookie);
+    const session = await requestSession(req);
+    const uid = session?.uid;
     if (!uid) {
       res.status(401).json({ error: "Sign in first" });
       return;
@@ -222,6 +238,12 @@ app.post(
         );
     }
     if (p.mode === "staff") {
+      if (p.pin !== undefined) {
+        pin.parse(p.pin);
+        p.name = z.string().trim().min(1).max(64).parse(p.name);
+        p.uid = "ump_" + digest(JSON.stringify([p.tid, p.name.toLowerCase()])).slice(0,32);
+        check(p.role === "referee", "Invalid role");
+      }
       id.parse(p.uid);
       if (p.accessCode !== undefined) {
         username.parse(p.uid);
@@ -229,7 +251,7 @@ app.post(
         check(p.role === "referee", "Invalid role");
       }
     }
-    const signature = p.accessCode !== undefined ? digest(JSON.stringify(p)) :
+    const signature = p.pin !== undefined || p.accessCode !== undefined ? digest(JSON.stringify(p)) :
       createHash("sha256").update(JSON.stringify(p)).digest("hex");
     const key = {
       tournamentId: p.tid,
@@ -240,6 +262,12 @@ app.post(
     const result = await client.withSession((s) =>
       s.withTransaction(async () => {
         const r = await load(p.tid, s);
+        if (session?.tid) {
+          const match = r?.events.find(d => d.id === p.eid)?.matches.find(m => m.id === p.action?.match);
+          check(session.tid === p.tid && p.mode === "action" && r?.staff[uid] === "referee" &&
+            match && match.court === session.court, "Permission denied");
+          if (!match.ref && (p.action.kind === "start" || match.status === "live")) match.ref = uid;
+        }
         if (p.mode === "create") {
           check(
             await collection("users").findOne(
@@ -252,7 +280,7 @@ app.post(
           check(
             r?.staff[uid] === "admin" ||
               (p.mode === "action" &&
-                r?.staff[uid] === "referee" &&
+                session?.tid === p.tid && r?.staff[uid] === "referee" &&
                 r.events
                   .find((d) => d.id === p.eid)
                   ?.matches.find((m) => m.id === p.action.match)?.ref === uid),
@@ -269,14 +297,18 @@ app.post(
           return previous.result;
         }
         if (p.mode === "staff") {
-          if (p.accessCode !== undefined) {
+          if (p.pin !== undefined) {
+            const key = pinKey(p.tid, p.pin);
+            check(!(await collection("umpireCodes").findOne({tournamentId:p.tid, $or:[{uid:p.uid},{key}]}, {session:s})), "Umpire name or code already in use");
+            await collection("umpireCodes").insertOne({tournamentId:p.tid, uid:p.uid, name:p.name, key}, {session:s});
+          } else if (p.accessCode !== undefined) {
             check(!(await collection("users").findOne({ uid: p.uid }, { session: s })), "Username already taken");
             await collection("users").insertOne({
               uid: p.uid, username: p.uid, email: p.uid, organizer: false,
               hash: await hash(p.accessCode),
             }, { session: s });
           } else {
-            check(await collection("users").findOne({ uid: p.uid }, { session: s }), "Unknown staff account");
+            check(await collection("users").findOne({ uid: p.uid }, { session: s }) || await collection("umpireCodes").findOne({tournamentId:p.tid, uid:p.uid}, {session:s}), "Unknown staff account");
           }
         }
         const record = change(r, uid, p);
@@ -310,8 +342,8 @@ app.use(
   ) => {
     const conflict = String(e.message).startsWith("Conflict");
     if (conflict) {
-      identity(req.headers.cookie)
-        .then((uid) => snapshot(String(req.body.tid), uid))
+      requestSession(req)
+        .then((session) => snapshot(String(req.body.tid), session?.uid || ""))
         .then((current) => res.status(409).json({ error: e.message, current }))
         .catch(() => res.sendStatus(503));
       return;

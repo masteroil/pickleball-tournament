@@ -5,9 +5,10 @@ async function request(path: string, p?: unknown) {
   const res = await fetch(base + "/api/" + path, {
     credentials: "include",
     method: p ? "POST" : "GET",
-    headers: p
-      ? { "Content-Type": "application/json", "X-Tournament-Request": "1" }
-      : {},
+    headers: {
+      ...(sessionStorage.getItem("court-token") ? {Authorization: "Bearer " + sessionStorage.getItem("court-token")} : {}),
+      ...(p ? {"Content-Type":"application/json", "X-Tournament-Request":"1"} : {}),
+    },
     body: p ? JSON.stringify(p) : undefined,
   });
   const result = await res.json();
@@ -17,12 +18,20 @@ async function request(path: string, p?: unknown) {
   }
   return result;
 }
+export async function enterCourt(tid: string, court: number, code: string) {
+  const result = await request("court-entry", {tid, court, code});
+  sessionStorage.setItem("court-token", result.token);
+  window.dispatchEvent(new Event("session"));
+  return result.uid as string;
+}
 export async function login(email: string, password: string) {
   await request("login", { email, password });
+  sessionStorage.removeItem("court-token");
   window.dispatchEvent(new Event("session"));
 }
 export async function logout() {
   await request("logout", {});
+  sessionStorage.removeItem("court-token");
   window.dispatchEvent(new Event("session"));
 }
 export async function write(p: any) {
@@ -38,7 +47,7 @@ export function watch(
   const socket = io(base, {
     withCredentials: true,
     autoConnect: false,
-    auth: { tid },
+    auth: done => done({tid, token: sessionStorage.getItem("court-token")}),
   });
   const read = async () => {
     const n = ++seq;

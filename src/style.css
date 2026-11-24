@@ -571,3 +571,14 @@ footer span {
     flex-direction: column;
   }
 }
+
+.bracket-scroll {overflow-x:auto; background:#f2f6f5; border-radius:12px; padding:16px}
+.bracket-head {display:grid; text-align:center; color:#34534c; font-size:.9rem}
+.bracket-tree {position:relative}
+.bracket-tree svg {position:absolute; inset:0; pointer-events:none}
+.bracket-tree path {fill:none; stroke:#809c94; stroke-width:1.5}
+.tree-match {position:absolute; transform:translateY(-50%); display:grid; gap:3px; text-align:left; padding:8px 12px; color:#153730; background:white; border:1px solid #c8d6d1; border-radius:8px}
+.tree-match span {display:flex; justify-content:space-between; gap:6px}
+.tree-match strong {white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.tree-match b {white-space:nowrap}
+.tree-winner {color:#08754c}
