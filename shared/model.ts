@@ -6,6 +6,7 @@ export type Team = {
   players: string[];
   pool: number;
 };
+export type Service = { side: number; dots: number };
 export type Match = {
   id: string;
   phase: "pool" | "playoff";
@@ -27,7 +28,8 @@ export type Match = {
   updated: number;
   finished: number;
   confirmedBy: string;
-  undo: Pair[][];
+  service?: Service;
+  undo: (Pair[] | {games: Pair[]; service?: Service})[];
   reason: string;
 };
 export type Config = {

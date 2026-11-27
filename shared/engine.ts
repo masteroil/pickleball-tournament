@@ -217,6 +217,8 @@ export function apply(
   const admin = actor.role === "admin";
   const score = [
     "start",
+    "rally",
+    "setService",
     "point",
     "subtract",
     "undo",
@@ -313,6 +315,7 @@ export function apply(
         ),
         "Court, team or referee already playing",
       );
+      m.service = { side: integer(data.side ?? 0, 0, 1), dots: 1 };
       m.status = "live";
       m.started = now;
     } else if (kind === "reopen") {
@@ -365,18 +368,33 @@ export function apply(
         }
       } else if (kind === "undo") {
         check(m.undo.length, "No recent action to undo");
-        m.games = m.undo.pop()!;
+        const previous = m.undo.pop()!;
+        m.games = Array.isArray(previous) ? previous : previous.games;
+        m.service = Array.isArray(previous) ? undefined : previous.service;
       } else {
         const last = m.games.at(-1)!;
-        const old = structuredClone(m.games);
+        const old = { games: structuredClone(m.games), service: m.service && {...m.service} };
         if (kind === "next") {
           check(
             gameWinner(last, m.rules) >= 0 && !matchWinner(m),
             "Next game is unavailable",
           );
           m.games.push([0, 0]);
+          m.service = {side: integer(data.side ?? 0, 0, 1), dots: 1};
+        } else if (kind === "setService") {
+          check(gameWinner(last, m.rules) < 0, "Game already complete");
+          m.service = {side: integer(data.side, 0, 1), dots: integer(data.dots, 1, d.config.type === "singles" ? 1 : 2)};
+        } else if (kind === "rally") {
+          check(gameWinner(last, m.rules) < 0, "Game already complete");
+          const serve = m.service;
+          check(serve, "Set the current server first");
+          const side = integer(data.side, 0, 1);
+          if (side === serve.side) last[side]++;
+          else if (serve.dots === 2) m.service = {side: serve.side, dots: 1};
+          else m.service = {side, dots: d.config.type === "singles" ? 1 : 2};
         } else if (kind === "point" || kind === "subtract") {
           const side = integer(data.side, 0, 1) as 0 | 1;
+          if (kind === "point" && m.service) check(side === m.service.side, "Only the serving side can score");
           if (kind === "point")
             check(gameWinner(last, m.rules) < 0, "Game already complete");
           else check(last[side] > 0, "Score is already zero");
@@ -408,6 +426,7 @@ export function apply(
               );
             copy.push(g);
           }
+          if (copy.length !== m.games.length) m.service = undefined;
           m.games = copy;
         } else throw Error("Unknown command");
         m.undo = [...m.undo.slice(-9), old];

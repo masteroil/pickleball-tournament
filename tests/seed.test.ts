@@ -32,10 +32,11 @@ describe("demo seed", () => {
   it("leaves the eight real-event draws editable before schedule generation", () => {
     const events = guideEvents();
     expect(events).toHaveLength(8);
-    expect(events.flatMap((d) => d.teams)).toHaveLength(93);
+    expect(events.flatMap((d) => d.teams)).toHaveLength(94);
     expect(
       events.flatMap((d) => d.teams.flatMap((t) => t.players)),
-    ).toHaveLength(153);
+    ).toHaveLength(155);
+    expect(events.find(d => d.id === "bx")?.teams.filter(t => t.pool === 1)[2].players).toEqual(["Josie","Christopher"]);
     expect(events.flatMap((d) => d.matches)).toHaveLength(0);
     expect(events.flatMap((d) => poolSchedule(d, 4))).toHaveLength(166);
     expect(events.find((d) => d.id === "ms")?.config.quarterRules).toEqual({

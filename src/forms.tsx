@@ -63,7 +63,7 @@ export function Wizard({
         n++;
         return {
           id: "team-" + n,
-          name: "Team " + n,
+          name: "Entry " + n,
           players: Array.from(
             { length: c.type === "singles" ? 1 : 2 },
             (_, i) => "Player " + n + String.fromCharCode(65 + i),
@@ -169,7 +169,7 @@ export function Wizard({
           </Field>
           {preset === "guide" ? (
             <p>
-              Loads 93 roster entries into 21 pools in list order. Confirm the official draw before generating matches.
+              Loads 94 entries across eight divisions, including the published doubles pool draws.
             </p>
           ) : (
             <div className="formgrid">
@@ -320,13 +320,6 @@ export function TeamEditor({
     <div>
       {teams.map((t, i) => (
         <div className="teamrow" key={t.id}>
-          <Field label="Entry name">
-            <input
-              required
-              value={t.name}
-              onChange={(e) => change(i, { name: e.target.value })}
-            />
-          </Field>
           {t.players.map((n, j) => (
             <Field label={"Player " + (j + 1)} key={j}>
               <input

@@ -56,11 +56,11 @@ export const guideDivisions: GuideDivision[] = [
     "sizes": [
       4,
       4,
-      3
+      4
     ],
     "qualifiersPerPool": 1,
     "wildcards": 1,
-    "doubleThree": true,
+    "doubleThree": false,
     "type": "doubles"
   },
   {

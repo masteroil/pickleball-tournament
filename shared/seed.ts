@@ -91,7 +91,7 @@ export function demoDivision(): Division {
   return division;
 }
 
-/** The guide lists entries in roster order. Initial pool positions can be edited before scheduling. */
+/** Use the published pool draws where supplied and roster order for the remaining divisions. */
 export function guideEvents(): Division[] {
   return guideDivisions.map((d) => {
     const config: Config = {

@@ -582,3 +582,5 @@ footer span {
 .tree-match strong {white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .tree-match b {white-space:nowrap}
 .tree-winner {color:#08754c}
+
+.serve-dots { color:#087d58; display:inline-block; font-size:.83em; letter-spacing:.12em; background:#e4f7ed; border-radius:.4em; padding:0 .25em; vertical-align:middle }

@@ -23,20 +23,20 @@ Pool schedules use sixteen half-hour slots per day from 09:00 local venue time, 
 
 ## El Nido event preset
 
-The updated guide lists 93 entries across eight divisions. Its division rows total 21 pools, 166 pool matches and 28 knockout matches for 194 matches. The summary row lists 19 pools. The preset follows the division rows.
+The updated guide lists 94 entries in the detailed roster across eight divisions. Its division rows total 21 pools, 166 pool matches and 28 knockout matches for 194 matches. The summary row lists 19 pools. The preset follows the division rows.
 
 | Division | Pools | Qualifiers |
 |---|---|---|
 | Men’s Singles | 5, 5, 5, 5 | 2 per pool |
 | Women’s Singles | 5, 4, 4 | 1 per pool plus one runner-up |
 | Novice Mixed Doubles | 5, 4, 4 | 1 per pool plus one runner-up |
-| Beginner Mixed Doubles | 4, 4, 3 | 1 per pool plus one runner-up |
+| Beginner Mixed Doubles | 4, 4, 4 | 1 per pool plus one runner-up |
 | Novice Men’s Doubles | 5, 5 | 2 per pool |
 | Beginner Men’s Doubles | 4, 4, 4 | 1 per pool plus one runner-up |
 | Novice Women’s Doubles | 5 | 4 per pool |
 | Beginner Women’s Doubles | 5, 4 | 2 per pool |
 
-Three-entry pools in the specified divisions play twice. Local ranking uses win percentage, points won percentage and eligible head-to-head results. Unresolved places require a recorded decision. Pool games and singles quarterfinals go to 15, win by two. Semifinals and finals use best of three to 11, win by two.
+Local ranking uses win percentage, points won percentage and eligible head-to-head results. Unresolved places require a recorded decision. Pool games and singles quarterfinals go to 15, win by two. Semifinals and finals use best of three to 11, win by two.
 
 ## Run the MongoDB API
 

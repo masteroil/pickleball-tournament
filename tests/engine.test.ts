@@ -40,6 +40,25 @@ describe("scoring and confirmed results", () => {
     m.games.push([12, 10]);
     expect(matchWinner(m)).toBe(m.a);
   });
+  it.each(["singles","doubles"] as const)("tracks side-outs, scores and undo for %s", type => {
+    const d = demoDivision();
+    d.config.type = type;
+    const m = d.matches[4];
+    m.status = "scheduled";
+    m.games = [[0,0]];
+    act(d,m,"start",{side:1});
+    expect(m.service).toEqual({side:1,dots:1});
+    act(d,m,"rally",{side:1});
+    expect(m.games).toEqual([[0,1]]);
+    act(d,m,"rally",{side:0});
+    expect(m.service).toEqual({side:0,dots:type === "singles" ? 1 : 2});
+    expect(m.games).toEqual([[0,1]]);
+    act(d,m,"rally",{side:1});
+    expect(m.service).toEqual({side:type === "singles" ? 1 : 0,dots:1});
+    act(d,m,"undo");
+    expect(m.service).toEqual({side:0,dots:type === "singles" ? 1 : 2});
+    expect(m.games).toEqual([[0,1]]);
+  });
   it("requires assignment, a current version and a valid winner", () => {
     const d = demoDivision(),
       m = d.matches[4];

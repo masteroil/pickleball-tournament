@@ -31,6 +31,15 @@ function useRoute() {
   }, []);
   return r;
 }
+function displayName(division: Division | undefined, id: string) {
+  return division?.teams.find(entry => entry.id === id)?.players.join(" & ") || "To be decided";
+}
+function ServiceDots({match, side}: {match: Match; side: number}) {
+  const serve = match.service;
+  if (!serve || serve.side !== side || match.status !== "live" || gameWinner(match.games.at(-1)!, match.rules) >= 0) return null;
+  const label = serve.dots === 2 ? "Serving · two serves remaining" : "Serving · one serve remaining";
+  return <span className="serve-dots" role="img" aria-label={label} title={label}>{"●".repeat(serve.dots)}</span>;
+}
 function App() {
   const [page = "live", tid = serverMode ? "" : "demo", eid = "", mid = ""] =
     useRoute().map((v) => v || undefined);
@@ -119,7 +128,7 @@ function App() {
     });
   };
   const names = (id: string) =>
-    d?.teams.find((x) => x.id === id)?.name || "To be decided";
+    displayName(d, id);
   const tv = page === "tv";
   const conn =
     offline || link === "Offline" ? "Offline" : busy ? "Saving" : link;
@@ -145,7 +154,7 @@ function App() {
     ["schedule", "Schedule"],
     ["standings", "Standings"],
     ["bracket", "Bracket"],
-    ...(!tid || tid === "demo" ? [["roster", "Official roster"]] : []),
+    ["roster", "Official roster"],
   ];
   const tournamentMatches = s.events
     .flatMap((event) => event.matches.map((match) => ({ event, match })))
@@ -216,7 +225,7 @@ function App() {
             {[x.a, x.b].map((id, i) => (
               <div className="scoreline" key={i}>
                 <strong>
-                  {event?.teams.find((team) => team.id === id)?.name}
+                  {displayName(event, id)} <ServiceDots match={x} side={i} />
                 </strong>
                 <b>{x.games.at(-1)![i]}</b>
               </div>
@@ -359,11 +368,14 @@ function App() {
         {page === "roster" ? (
           <section>
             <h2>El Nido Pickleball Open 2026 · Official roster</h2>
-            <p>93 entries across 8 divisions · December 4–6, El Nido Pickle Park</p>
-            {guideDivisions.map(({code,name}) => (
+            <p>94 entries across 8 divisions · December 4–6, El Nido Pickle Park</p>
+            {guideDivisions.map(({code,name,sizes}) => (
               <section className="panel" key={code}>
                 <h3>{name} ({officialRoster[code].length})</h3>
-                <ol>{officialRoster[code].map((players,i) => <li key={i}>{players.join(" & ")}</li>)}</ol>
+                {sizes.map((size,index) => {
+                  const start = sizes.slice(0,index).reduce((sum,n) => sum+n,0);
+                  return <div key={index}><h4>{pool(index)}</h4><ol>{officialRoster[code].slice(start,start+size).map(players => <li key={players.join("|")}>{players.join(" & ")}</li>)}</ol></div>;
+                })}
               </section>
             ))}
           </section>
@@ -820,6 +832,7 @@ function Scoring({
   history: import("../shared/model").Audit[];
 }) {
   const [review, setReview] = useState(false);
+  const [openingSide, setOpeningSide] = useState(0);
   const score = m.games.at(-1)!,
     done = gameWinner(score, m.rules) >= 0,
     winner = matchWinner(m),
@@ -843,17 +856,17 @@ function Scoring({
       <div className="scoregrid">
         {[m.a, m.b].map((id, i) => (
           <section key={i} className="scoring">
-            <h3>{names(id)}</h3>
+            <h3>{names(id)} <ServiceDots match={m} side={i} /></h3>
             <b data-testid={"score-" + i}>{score[i]}</b>
             <p>{gamesWon(m)[i]} games won</p>
             {edit && m.status === "live" && (
               <div>
                 <button
                   className="primary"
-                  disabled={locked || done}
-                  onClick={() => action("point", { side: i }, m)}
+                  disabled={locked || done || !m.service}
+                  onClick={() => action("rally", { side: i }, m)}
                 >
-                  +1 {names(id)}
+                  Rally won · {names(id)}
                 </button>
                 <button
                   disabled={locked || score[i] === 0}
@@ -868,11 +881,21 @@ function Scoring({
       </div>
       {edit && (
         <div className="actions panel">
+          {(m.status === "scheduled" || (done && !winner && m.status === "live")) && (
+            <Field label="Opening serve"><select value={openingSide} onChange={e => setOpeningSide(Number(e.target.value))}>
+              {[m.a, m.b].map((id,i) => <option key={i} value={i}>{names(id)}</option>)}
+            </select></Field>
+          )}
+          {m.status === "live" && !done && <details open={!m.service || undefined}>
+            <summary>{m.service ? "Correct service" : "Set current service to continue"}</summary>
+            {[m.a,m.b].map((id,i) => <div key={i}>{(d.config.type === "singles" ? [1] : [2,1]).map(dots =>
+              <button key={dots} disabled={locked} onClick={() => action("setService", {side:i,dots}, m)}>{names(id)} {"●".repeat(dots)}</button>)}</div>)}
+          </details>}
           {m.status === "scheduled" && (
             <button
               className="primary"
               disabled={locked || !m.a || !m.b}
-              onClick={() => action("start", {}, m)}
+              onClick={() => action("start", {side:openingSide}, m)}
             >
               Start match
             </button>
@@ -886,7 +909,7 @@ function Scoring({
                 Undo last action
               </button>
               {done && !winner && (
-                <button disabled={locked} onClick={() => action("next", {}, m)}>
+                <button disabled={locked} onClick={() => action("next", {side:openingSide}, m)}>
                   Start next game
                 </button>
               )}
@@ -1075,7 +1098,7 @@ function Admin({
           <div>
             {d.teams.map((x) => (
               <p key={x.id}>
-                <b>{x.name}</b> · {x.players.join(" / ")} · {pool(x.pool)}
+                <b>{x.players.join(" & ")}</b> · {pool(x.pool)}
               </p>
             ))}
           </div>
@@ -1141,7 +1164,7 @@ function Admin({
           Record the ordered IDs within the tied group and the decision,
           including a coin toss if used.
         </p>
-        <small>{d.teams.map((x) => x.id + " = " + x.name).join(" · ")}</small>
+        <small>{d.teams.map((x) => x.id + " = " + x.players.join(" & ")).join(" · ")}</small>
         <form
           className="form"
           onSubmit={(e) => {
